@@ -5,6 +5,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from app.services.errors import member_not_found_error
+
 
 BenefitStatus = Literal["active", "inactive", "member_not_found", "unknown"]
 
@@ -153,3 +155,8 @@ def normalize_eligibility_response(raw_response: dict[str, Any]) -> EligibilityS
         in_network=in_network,
         mental_health=mental_health,
     )
+
+
+def raise_for_eligibility_error(summary: EligibilitySummary) -> None:
+    if summary.mental_health.status == "member_not_found":
+        raise member_not_found_error()

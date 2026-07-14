@@ -5,6 +5,12 @@ from typing import Any
 
 import httpx
 
+from app.services.errors import (
+    configuration_error,
+    payer_error,
+    timeout_error,
+)
+
 
 STEDI_ELIGIBILITY_URL = (
     "https://healthcare.us.stedi.com/2024-04-01/change/"
@@ -32,7 +38,7 @@ SANDBOX_MENTAL_HEALTH_REQUEST: dict[str, Any] = {
 def _get_stedi_api_key() -> str:
     api_key = os.environ.get("STEDI_API_KEY")
     if not api_key:
-        raise RuntimeError("STEDI_API_KEY is not set")
+        raise configuration_error()
     return api_key
 
 
@@ -45,22 +51,32 @@ async def run_sandbox_eligibility_check(
         "Content-Type": "application/json",
     }
 
-    if client is not None:
-        response = await client.post(
-            STEDI_ELIGIBILITY_URL,
-            headers=headers,
-            json=SANDBOX_MENTAL_HEALTH_REQUEST,
-        )
-    else:
-        async with httpx.AsyncClient(timeout=30.0) as stedi_client:
-            response = await stedi_client.post(
+    try:
+        if client is not None:
+            response = await client.post(
                 STEDI_ELIGIBILITY_URL,
                 headers=headers,
                 json=SANDBOX_MENTAL_HEALTH_REQUEST,
             )
+        else:
+            async with httpx.AsyncClient(timeout=30.0) as stedi_client:
+                response = await stedi_client.post(
+                    STEDI_ELIGIBILITY_URL,
+                    headers=headers,
+                    json=SANDBOX_MENTAL_HEALTH_REQUEST,
+                )
 
-    response.raise_for_status()
-    response_json = response.json()
+        response.raise_for_status()
+    except httpx.TimeoutException as exc:
+        raise timeout_error() from exc
+    except (httpx.HTTPStatusError, httpx.RequestError) as exc:
+        raise payer_error() from exc
+
+    try:
+        response_json = response.json()
+    except ValueError as exc:
+        raise payer_error() from exc
+
     if not isinstance(response_json, dict):
-        raise RuntimeError("Stedi returned a non-object JSON response")
+        raise payer_error()
     return response_json
