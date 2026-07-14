@@ -1,0 +1,14 @@
+# Ignore a specific file
+secrets.json
+
+# Ignore a whole directory (always add a trailing slash)
+__pycache__/
+.pytest_cache/
+node_modules/
+/build/
+frontend/dist/
+
+# Ignore all files matching an extension
+*.py[cod]
+*.log
+*.env
