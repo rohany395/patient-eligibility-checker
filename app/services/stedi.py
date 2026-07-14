@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+from datetime import date
 from typing import Any
 
 import httpx
 
+from app.models import Insurer
 from app.services.errors import (
     configuration_error,
     payer_error,
@@ -34,6 +36,13 @@ SANDBOX_MENTAL_HEALTH_REQUEST: dict[str, Any] = {
     },
 }
 
+TRADING_PARTNER_SERVICE_IDS: dict[Insurer, str] = {
+    "aetna": "60054",
+    "cigna": "62308",
+    "unitedhealthcare": "87726",
+    "cms": "CMS",
+}
+
 
 def _get_stedi_api_key() -> str:
     api_key = os.environ.get("STEDI_API_KEY")
@@ -43,6 +52,37 @@ def _get_stedi_api_key() -> str:
 
 
 async def run_sandbox_eligibility_check(
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    return await _post_eligibility_request(SANDBOX_MENTAL_HEALTH_REQUEST, client)
+
+
+async def run_eligibility_check(
+    *,
+    member_id: str,
+    date_of_birth: date,
+    insurer: Insurer,
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "tradingPartnerServiceId": TRADING_PARTNER_SERVICE_IDS[insurer],
+        "encounter": {
+            "serviceTypeCodes": ["MH"],
+        },
+        "provider": {
+            "organizationName": "ACME Health Services",
+            "npi": "1999999984",
+        },
+        "subscriber": {
+            "dateOfBirth": date_of_birth.strftime("%Y%m%d"),
+            "memberId": member_id,
+        },
+    }
+    return await _post_eligibility_request(payload, client)
+
+
+async def _post_eligibility_request(
+    payload: dict[str, Any],
     client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:
     api_key = _get_stedi_api_key()
@@ -56,14 +96,14 @@ async def run_sandbox_eligibility_check(
             response = await client.post(
                 STEDI_ELIGIBILITY_URL,
                 headers=headers,
-                json=SANDBOX_MENTAL_HEALTH_REQUEST,
+                json=payload,
             )
         else:
             async with httpx.AsyncClient(timeout=30.0) as stedi_client:
                 response = await stedi_client.post(
                     STEDI_ELIGIBILITY_URL,
                     headers=headers,
-                    json=SANDBOX_MENTAL_HEALTH_REQUEST,
+                    json=payload,
                 )
 
         response.raise_for_status()

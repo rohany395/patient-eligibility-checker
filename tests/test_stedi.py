@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import date
 
 import httpx
 import pytest
@@ -8,6 +9,7 @@ from app.services.errors import EligibilityServiceError
 from app.services.stedi import (
     SANDBOX_MENTAL_HEALTH_REQUEST,
     STEDI_ELIGIBILITY_URL,
+    run_eligibility_check,
     run_sandbox_eligibility_check,
 )
 
@@ -40,6 +42,46 @@ def test_run_sandbox_eligibility_check_sends_documented_mh_request(
         SANDBOX_MENTAL_HEALTH_REQUEST["encounter"]["serviceTypeCodes"]
         == ["MH"]
     )
+
+
+def test_run_eligibility_check_sends_patient_request_with_mh_service_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("STEDI_API_KEY", "test_key")
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"id": "response_id", "status": "ok"})
+
+    transport = httpx.MockTransport(handler)
+
+    async def run_check() -> dict[str, object]:
+        async with httpx.AsyncClient(transport=transport) as client:
+            return await run_eligibility_check(
+                member_id="TESTMEMBER",
+                date_of_birth=date(2000, 1, 1),
+                insurer="unitedhealthcare",
+                client=client,
+            )
+
+    response = asyncio.run(run_check())
+
+    assert response == {"id": "response_id", "status": "ok"}
+    assert captured["body"] == {
+        "tradingPartnerServiceId": "87726",
+        "encounter": {
+            "serviceTypeCodes": ["MH"],
+        },
+        "provider": {
+            "organizationName": "ACME Health Services",
+            "npi": "1999999984",
+        },
+        "subscriber": {
+            "dateOfBirth": "20000101",
+            "memberId": "TESTMEMBER",
+        },
+    }
 
 
 def test_run_sandbox_eligibility_check_requires_api_key(
