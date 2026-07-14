@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.models import BadRequestResponse, EligibilityRequest
@@ -18,6 +19,16 @@ class HealthResponse(BaseModel):
 
 
 app = FastAPI(title="Patient Eligibility Checker")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_methods=["POST"],
+    allow_headers=["content-type"],
+)
 
 
 def register_exception_handlers(fastapi_app: FastAPI) -> None:

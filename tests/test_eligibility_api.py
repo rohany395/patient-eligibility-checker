@@ -71,6 +71,22 @@ def test_eligibility_endpoint_returns_clean_400_for_bad_request() -> None:
     }
 
 
+def test_eligibility_endpoint_allows_vite_cors_preflight() -> None:
+    response = TestClient(app).options(
+        "/eligibility",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == (
+        "http://127.0.0.1:5173"
+    )
+
+
 def test_eligibility_endpoint_returns_clean_error_for_member_not_found(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
