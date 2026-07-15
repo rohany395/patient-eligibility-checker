@@ -125,14 +125,8 @@ function App() {
   const [error, setError] = useState<ApiError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function fillSamplePatient() {
-    setForm({
-      firstName: "Jane",
-      lastName: "Doe",
-      memberId: "AETNA12345",
-      dateOfBirth: "2004-04-04",
-      insurer: "aetna",
-    });
+  function fillSamplePatient(sample: FormState) {
+    setForm(sample);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -194,16 +188,56 @@ function App() {
           <form className="lookup-form" onSubmit={handleSubmit}>
             <div className="form-note">
               <p>
-                Sandbox demo only. Use Stedi mock patient details, not real
-                insurance information.
+                Sandbox demo with test data only. Use one of the sample
+                patients, not real insurance information.
               </p>
-              <button
-                className="secondary-button"
-                onClick={fillSamplePatient}
-                type="button"
-              >
-                Use sample patient
-              </button>
+              <div className="sample-buttons">
+                <button
+                  className="secondary-button"
+                  onClick={() =>
+                    fillSamplePatient({
+                      firstName: "Jane",
+                      lastName: "Doe",
+                      memberId: "AETNA12345",
+                      dateOfBirth: "2004-04-04",
+                      insurer: "aetna",
+                    })
+                  }
+                  type="button"
+                >
+                  Covered
+                </button>
+                <button
+                  className="secondary-button"
+                  onClick={() =>
+                    fillSamplePatient({
+                      firstName: "Jane",
+                      lastName: "Doe",
+                      memberId: "UHCINACTIVE",
+                      dateOfBirth: "1971-01-01",
+                      insurer: "unitedhealthcare",
+                    })
+                  }
+                  type="button"
+                >
+                  Not covered
+                </button>
+                <button
+                  className="secondary-button"
+                  onClick={() =>
+                    fillSamplePatient({
+                      firstName: "Jane",
+                      lastName: "Doe",
+                      memberId: "UHCAAA42",
+                      dateOfBirth: "2001-01-01",
+                      insurer: "unitedhealthcare",
+                    })
+                  }
+                  type="button"
+                >
+                  System busy
+                </button>
+              </div>
             </div>
 
             <div className="name-grid">
