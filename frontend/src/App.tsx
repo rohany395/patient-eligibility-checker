@@ -6,7 +6,7 @@ import "./styles.css";
 type Insurer = "aetna" | "cigna" | "unitedhealthcare" | "cms";
 
 type MentalHealthBenefit = {
-  service_type_code: "MH";
+  service_type_code: string;
   status: "active" | "inactive" | "member_not_found" | "unknown";
   copay: string | null;
   coinsurance: string | null;
@@ -31,6 +31,8 @@ type ApiError = {
 };
 
 type FormState = {
+  firstName: string;
+  lastName: string;
   memberId: string;
   dateOfBirth: string;
   insurer: Insurer;
@@ -84,6 +86,8 @@ function plainAnswer(result: EligibilityResult): string {
 
 function App() {
   const [form, setForm] = useState<FormState>({
+    firstName: "",
+    lastName: "",
     memberId: "",
     dateOfBirth: "",
     insurer: "unitedhealthcare",
@@ -105,6 +109,8 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          first_name: form.firstName.trim(),
+          last_name: form.lastName.trim(),
           member_id: form.memberId.trim(),
           date_of_birth: form.dateOfBirth,
           insurer: form.insurer,
@@ -137,8 +143,47 @@ function App() {
           <h1 id="page-title">Mental health coverage lookup</h1>
         </div>
 
+        <p className="disclaimer" role="note">
+          This app only uses mock data provided by Stedi. Do not enter real
+          patient or insurance information.
+        </p>
+
         <div className="layout-grid">
           <form className="lookup-form" onSubmit={handleSubmit}>
+            <div className="name-grid">
+              <label>
+                <span>First name</span>
+                <input
+                  autoComplete="given-name"
+                  name="firstName"
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      firstName: event.target.value,
+                    }))
+                  }
+                  required
+                  value={form.firstName}
+                />
+              </label>
+
+              <label>
+                <span>Last name</span>
+                <input
+                  autoComplete="family-name"
+                  name="lastName"
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      lastName: event.target.value,
+                    }))
+                  }
+                  required
+                  value={form.lastName}
+                />
+              </label>
+            </div>
+
             <label>
               <span>Member ID</span>
               <input

@@ -65,6 +65,8 @@ def health() -> HealthResponse:
 @app.post("/eligibility", response_model=EligibilitySummary)
 async def check_eligibility(request: EligibilityRequest) -> EligibilitySummary:
     raw_response = await run_eligibility_check(
+        first_name=request.first_name,
+        last_name=request.last_name,
         member_id=request.member_id,
         date_of_birth=request.date_of_birth,
         insurer=request.insurer,

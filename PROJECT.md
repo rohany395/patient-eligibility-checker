@@ -7,7 +7,8 @@ check, then commit before moving on. Keep tasks small — if a task feels big, s
 ## Reference
 - Stedi healthcare / eligibility docs — read the real-time eligibility section BEFORE
   Task 2, and don't guess the request/response format. (Confirm the current URL at
-  https://www.stedi.com/docs.)
+  https://www.stedi.com/docs,
+  https://www.stedi.com/docs/healthcare/api-reference/mock-requests-eligibility-checks)
 - The sandbox uses fixed mock patients and mock payers (Aetna, Cigna, UnitedHealthcare, CMS).
 - Sign-up is free. Put the sandbox key in a local `.env` as `STEDI_API_KEY` (never commit it).
 

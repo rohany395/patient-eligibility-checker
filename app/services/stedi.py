@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -18,22 +19,29 @@ STEDI_ELIGIBILITY_URL = (
     "https://healthcare.us.stedi.com/2024-04-01/change/"
     "medicalnetwork/eligibility/v3"
 )
+STEDI_MOCK_SERVICE_TYPE_CODE = "30"
 
-SANDBOX_MENTAL_HEALTH_REQUEST: dict[str, Any] = {
-    "tradingPartnerServiceId": "ABDCE",
+SANDBOX_DOCUMENTED_MOCK_REQUEST: dict[str, Any] = {
+    "tradingPartnerServiceId": "87726",
     "encounter": {
-        "serviceTypeCodes": ["MH"],
+        "serviceTypeCodes": [STEDI_MOCK_SERVICE_TYPE_CODE],
     },
     "provider": {
-        "organizationName": "ACME Health Services",
+        "organizationName": "Provider Name",
         "npi": "1999999984",
     },
     "subscriber": {
-        "dateOfBirth": "19000101",
-        "firstName": "Jane",
+        "firstName": "John",
         "lastName": "Doe",
-        "memberId": "1234567890",
+        "memberId": "UHC202649",
     },
+    "dependents": [
+        {
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "dateOfBirth": "19521121",
+        },
+    ],
 }
 
 TRADING_PARTNER_SERVICE_IDS: dict[Insurer, str] = {
@@ -45,20 +53,34 @@ TRADING_PARTNER_SERVICE_IDS: dict[Insurer, str] = {
 
 
 def _get_stedi_api_key() -> str:
-    api_key = os.environ.get("STEDI_API_KEY")
+    api_key = os.environ.get("STEDI_API_KEY") or _read_dotenv_api_key()
     if not api_key:
         raise configuration_error()
     return api_key
 
 
+def _read_dotenv_api_key() -> str | None:
+    dotenv_path = Path.cwd() / ".env"
+    if not dotenv_path.exists():
+        return None
+
+    for line in dotenv_path.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.partition("=")
+        if separator and key.strip() == "STEDI_API_KEY":
+            return value.strip().strip("\"'")
+    return None
+
+
 async def run_sandbox_eligibility_check(
     client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:
-    return await _post_eligibility_request(SANDBOX_MENTAL_HEALTH_REQUEST, client)
+    return await _post_eligibility_request(SANDBOX_DOCUMENTED_MOCK_REQUEST, client)
 
 
 async def run_eligibility_check(
     *,
+    first_name: str,
+    last_name: str,
     member_id: str,
     date_of_birth: date,
     insurer: Insurer,
@@ -67,13 +89,15 @@ async def run_eligibility_check(
     payload = {
         "tradingPartnerServiceId": TRADING_PARTNER_SERVICE_IDS[insurer],
         "encounter": {
-            "serviceTypeCodes": ["MH"],
+            "serviceTypeCodes": [STEDI_MOCK_SERVICE_TYPE_CODE],
         },
         "provider": {
-            "organizationName": "ACME Health Services",
+            "organizationName": "Provider Name",
             "npi": "1999999984",
         },
         "subscriber": {
+            "firstName": first_name,
+            "lastName": last_name,
             "dateOfBirth": date_of_birth.strftime("%Y%m%d"),
             "memberId": member_id,
         },

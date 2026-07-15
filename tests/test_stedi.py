@@ -7,14 +7,14 @@ import pytest
 
 from app.services.errors import EligibilityServiceError
 from app.services.stedi import (
-    SANDBOX_MENTAL_HEALTH_REQUEST,
+    SANDBOX_DOCUMENTED_MOCK_REQUEST,
     STEDI_ELIGIBILITY_URL,
     run_eligibility_check,
     run_sandbox_eligibility_check,
 )
 
 
-def test_run_sandbox_eligibility_check_sends_documented_mh_request(
+def test_run_sandbox_eligibility_check_sends_documented_mock_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("STEDI_API_KEY", "test_key")
@@ -37,14 +37,14 @@ def test_run_sandbox_eligibility_check_sends_documented_mh_request(
     assert response == {"id": "response_id", "status": "ok"}
     assert captured["url"] == STEDI_ELIGIBILITY_URL
     assert captured["authorization"] == "Key test_key"
-    assert captured["body"] == SANDBOX_MENTAL_HEALTH_REQUEST
+    assert captured["body"] == SANDBOX_DOCUMENTED_MOCK_REQUEST
     assert (
-        SANDBOX_MENTAL_HEALTH_REQUEST["encounter"]["serviceTypeCodes"]
-        == ["MH"]
+        SANDBOX_DOCUMENTED_MOCK_REQUEST["encounter"]["serviceTypeCodes"]
+        == ["30"]
     )
 
 
-def test_run_eligibility_check_sends_patient_request_with_mh_service_type(
+def test_run_eligibility_check_sends_documented_patient_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("STEDI_API_KEY", "test_key")
@@ -59,6 +59,8 @@ def test_run_eligibility_check_sends_patient_request_with_mh_service_type(
     async def run_check() -> dict[str, object]:
         async with httpx.AsyncClient(transport=transport) as client:
             return await run_eligibility_check(
+                first_name="Jane",
+                last_name="Doe",
                 member_id="TESTMEMBER",
                 date_of_birth=date(2000, 1, 1),
                 insurer="unitedhealthcare",
@@ -71,13 +73,15 @@ def test_run_eligibility_check_sends_patient_request_with_mh_service_type(
     assert captured["body"] == {
         "tradingPartnerServiceId": "87726",
         "encounter": {
-            "serviceTypeCodes": ["MH"],
+            "serviceTypeCodes": ["30"],
         },
         "provider": {
-            "organizationName": "ACME Health Services",
+            "organizationName": "Provider Name",
             "npi": "1999999984",
         },
         "subscriber": {
+            "firstName": "Jane",
+            "lastName": "Doe",
             "dateOfBirth": "20000101",
             "memberId": "TESTMEMBER",
         },
@@ -86,14 +90,41 @@ def test_run_eligibility_check_sends_patient_request_with_mh_service_type(
 
 def test_run_sandbox_eligibility_check_requires_api_key(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     monkeypatch.delenv("STEDI_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
 
     with pytest.raises(EligibilityServiceError) as exc_info:
         asyncio.run(run_sandbox_eligibility_check())
 
     assert exc_info.value.code == "configuration_error"
     assert exc_info.value.status_code == 503
+
+
+def test_run_sandbox_eligibility_check_reads_api_key_from_dotenv(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.delenv("STEDI_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("STEDI_API_KEY=dotenv_key\n", encoding="utf-8")
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["authorization"] = request.headers["Authorization"]
+        return httpx.Response(200, json={"id": "response_id", "status": "ok"})
+
+    transport = httpx.MockTransport(handler)
+
+    async def run_check() -> dict[str, object]:
+        async with httpx.AsyncClient(transport=transport) as client:
+            return await run_sandbox_eligibility_check(client=client)
+
+    response = asyncio.run(run_check())
+
+    assert response == {"id": "response_id", "status": "ok"}
+    assert captured["authorization"] == "Key dotenv_key"
 
 
 def test_run_sandbox_eligibility_check_maps_timeout_to_user_safe_error(

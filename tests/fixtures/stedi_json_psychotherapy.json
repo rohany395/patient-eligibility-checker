@@ -1,0 +1,57 @@
+{
+  "tradingPartnerServiceId": "87726",
+  "provider": {
+    "providerName": "Jerde - Sauer",
+    "entityIdentifier": "Provider",
+    "entityType": "Non-Person Entity",
+    "npi": "1999999984"
+  },
+  "subscriber": {
+    "memberId": "UHC202649",
+    "firstName": "John",
+    "lastName": "Doe",
+    "dateOfBirth": "19760214"
+  },
+  "benefitsInformation": [
+    {
+      "code": "1",
+      "name": "Active Coverage",
+      "serviceTypeCodes": ["30"],
+      "serviceTypes": ["Health Benefit Plan Coverage"],
+      "inPlanNetworkIndicatorCode": "Y",
+      "inPlanNetworkIndicator": "Yes"
+    },
+    {
+      "code": "1",
+      "name": "Active Coverage",
+      "serviceTypeCodes": ["A6"],
+      "serviceTypes": ["Psychotherapy"],
+      "inPlanNetworkIndicatorCode": "Y",
+      "inPlanNetworkIndicator": "Yes"
+    },
+    {
+      "code": "A",
+      "name": "Co-Insurance",
+      "coverageLevelCode": "IND",
+      "coverageLevel": "Individual",
+      "serviceTypeCodes": ["A6"],
+      "serviceTypes": ["Psychotherapy"],
+      "timeQualifierCode": "27",
+      "timeQualifier": "Visit",
+      "benefitPercent": "0.2",
+      "inPlanNetworkIndicatorCode": "Y",
+      "inPlanNetworkIndicator": "Yes"
+    },
+    {
+      "code": "C",
+      "name": "Deductible",
+      "coverageLevelCode": "IND",
+      "coverageLevel": "Individual",
+      "serviceTypeCodes": ["A6"],
+      "serviceTypes": ["Psychotherapy"],
+      "benefitAmount": "500",
+      "inPlanNetworkIndicatorCode": "Y",
+      "inPlanNetworkIndicator": "Yes"
+    }
+  ]
+}

@@ -28,6 +28,20 @@ def test_normalize_eligibility_response_active_mental_health() -> None:
     assert result.mental_health.carve_out is False
 
 
+def test_normalize_eligibility_response_stedi_json_psychotherapy() -> None:
+    result = normalize_eligibility_response(
+        load_fixture("stedi_json_psychotherapy.json")
+    )
+
+    assert result.covered is True
+    assert result.copay is None
+    assert result.coinsurance == Decimal("0.2")
+    assert result.deductible == Decimal("500")
+    assert result.in_network is True
+    assert result.mental_health.status == "active"
+    assert result.mental_health.service_type_code == "A6"
+
+
 def test_normalize_eligibility_response_inactive_mental_health() -> None:
     result = normalize_eligibility_response(
         load_fixture("inactive_mental_health.json")

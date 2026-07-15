@@ -28,6 +28,8 @@ def test_eligibility_endpoint_returns_normalized_result(
     response = TestClient(app).post(
         "/eligibility",
         json={
+            "first_name": "Jane",
+            "last_name": "Doe",
             "member_id": "TESTMEMBER",
             "date_of_birth": "2000-01-01",
             "insurer": "unitedhealthcare",
@@ -58,6 +60,8 @@ def test_eligibility_endpoint_returns_clean_400_for_bad_request() -> None:
     response = TestClient(app).post(
         "/eligibility",
         json={
+            "first_name": "",
+            "last_name": "",
             "member_id": "",
             "date_of_birth": "not-a-date",
             "insurer": "unknown",
@@ -101,6 +105,8 @@ def test_eligibility_endpoint_returns_clean_error_for_member_not_found(
     response = TestClient(app).post(
         "/eligibility",
         json={
+            "first_name": "Jane",
+            "last_name": "Doe",
             "member_id": "TESTMEMBER",
             "date_of_birth": "2000-01-01",
             "insurer": "unitedhealthcare",
