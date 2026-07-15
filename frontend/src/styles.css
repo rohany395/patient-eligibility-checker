@@ -33,7 +33,7 @@ select {
 }
 
 .page-heading {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .eyebrow {
@@ -71,6 +71,16 @@ p {
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
 }
 
+.disclaimer {
+  background: #fff8e6;
+  border: 1px solid #e2c46f;
+  border-radius: 6px;
+  color: #5e4b18;
+  font-weight: 700;
+  margin: 0 0 24px;
+  padding: 12px 14px;
+}
+
 .lookup-form,
 .result-surface {
   background: #ffffff;
@@ -85,9 +95,29 @@ p {
   padding: 22px;
 }
 
+.form-note {
+  background: #f4f7f5;
+  border: 1px solid #d5dfda;
+  border-radius: 6px;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.form-note p {
+  color: #4f5a62;
+  font-size: 0.95rem;
+}
+
 label {
   display: grid;
   gap: 8px;
+}
+
+.name-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 label span,
@@ -134,6 +164,16 @@ button:disabled {
   opacity: 0.7;
 }
 
+.secondary-button {
+  background: #ffffff;
+  border-color: #bfc8c4;
+  color: #254e58;
+}
+
+.secondary-button:hover {
+  border-color: #336a62;
+}
+
 .result-surface {
   min-height: 350px;
   padding: 24px;
@@ -175,6 +215,14 @@ dd {
   overflow-wrap: anywhere;
 }
 
+.detail-note {
+  color: #5f6973;
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
 .notice {
   background: #eef5f1;
   border: 1px solid #c8d8d1;
@@ -197,6 +245,10 @@ dd {
   }
 
   dl {
+    grid-template-columns: 1fr;
+  }
+
+  .name-grid {
     grid-template-columns: 1fr;
   }
 }

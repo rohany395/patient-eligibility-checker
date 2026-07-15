@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -22,10 +24,7 @@ app = FastAPI(title="Patient Eligibility Checker")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=[os.environ.get("FRONTEND_ORIGIN", "http://localhost:5173")],
     allow_methods=["POST"],
     allow_headers=["content-type"],
 )
@@ -65,6 +64,8 @@ def health() -> HealthResponse:
 @app.post("/eligibility", response_model=EligibilitySummary)
 async def check_eligibility(request: EligibilityRequest) -> EligibilitySummary:
     raw_response = await run_eligibility_check(
+        first_name=request.first_name,
+        last_name=request.last_name,
         member_id=request.member_id,
         date_of_birth=request.date_of_birth,
         insurer=request.insurer,

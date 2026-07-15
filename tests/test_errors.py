@@ -17,7 +17,9 @@ FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
 
 def test_member_not_found_maps_to_user_safe_error() -> None:
-    raw_response = json.loads((FIXTURE_DIR / "member_not_found.json").read_text())
+    raw_response = json.loads(
+        (FIXTURE_DIR / "member_not_found_aaa75.json").read_text()
+    )
     summary = normalize_eligibility_response(raw_response)
 
     with pytest.raises(EligibilityServiceError) as exc_info:
@@ -34,10 +36,29 @@ def test_member_not_found_maps_to_user_safe_error() -> None:
     }
 
 
-def test_active_result_does_not_raise_user_safe_error() -> None:
+def test_payer_unavailable_maps_to_user_safe_error() -> None:
     raw_response = json.loads(
-        (FIXTURE_DIR / "active_mental_health.json").read_text()
+        (FIXTURE_DIR / "payer_unavailable_aaa42.json").read_text()
     )
+    summary = normalize_eligibility_response(raw_response)
+
+    with pytest.raises(EligibilityServiceError) as exc_info:
+        raise_for_eligibility_error(summary)
+
+    error = exc_info.value
+    assert error.code == "payer_error"
+    assert error.status_code == 502
+    assert error.to_response().model_dump() == {
+        "code": "payer_error",
+        "message": (
+            "The insurance eligibility system could not complete the check "
+            "right now. Please try again later."
+        ),
+    }
+
+
+def test_active_result_does_not_raise_user_safe_error() -> None:
+    raw_response = json.loads((FIXTURE_DIR / "active_aetna.json").read_text())
     summary = normalize_eligibility_response(raw_response)
 
     raise_for_eligibility_error(summary)

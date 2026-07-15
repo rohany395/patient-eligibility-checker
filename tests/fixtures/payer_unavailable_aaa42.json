@@ -1,0 +1,67 @@
+{
+  "meta": {
+    "senderId": "STEDI",
+    "submitterId": "117151744",
+    "applicationMode": "test",
+    "traceId": "11112222333344445555666677",
+    "outboundTraceId": "01KXK5ZBGQQDMXZRPG1CXBC15W"
+  },
+  "controlNumber": "493632333",
+  "reassociationKey": "493632333",
+  "tradingPartnerServiceId": "87726",
+  "provider": {
+    "providerName": "MEDICAL PROVIDER",
+    "entityIdentifier": "Provider",
+    "entityType": "Non-Person Entity",
+    "npi": "1999999984"
+  },
+  "subscriber": {
+    "memberId": "UHCAAA42",
+    "firstName": "JANE",
+    "lastName": "DOE",
+    "entityIdentifier": "Insured or Subscriber",
+    "entityType": "Person",
+    "dateOfBirth": "20010101",
+    "groupNumber": "666777",
+    "aaaErrors": [
+      {
+        "field": "AAA",
+        "code": "42",
+        "description": "Unable to Respond at Current Time",
+        "followupAction": "Resubmission Allowed",
+        "location": "Loop 2100C",
+        "possibleResolutions": "The payer can't respond to your request. This is typically a temporary issue with the payer's system, such as downtime, but it can also be an extended outage. We recommend retrying immediately and continuing to retry for up to 2 minutes. Learn more about our [recommended retry strategy](https://www.stedi.com/docs/healthcare/eligibility-troubleshooting#payer-connectivity-issues) for payer connectivity issues."
+      }
+    ]
+  },
+  "payer": {
+    "entityIdentifier": "Payer",
+    "entityType": "Non-Person Entity",
+    "name": "UNITEDHEALTHCARE",
+    "payorIdentification": "87726",
+    "contactInformation": {
+      "contacts": [
+        {
+          "communicationMode": "Uniform Resource Locator (URL)",
+          "communicationNumber": "WWW.UHCPROVIDER.COM"
+        }
+      ]
+    }
+  },
+  "planInformation": {
+    "groupNumber": "666777"
+  },
+  "errors": [
+    {
+      "field": "AAA",
+      "code": "42",
+      "description": "Unable to Respond at Current Time",
+      "followupAction": "Resubmission Allowed",
+      "location": "Loop 2100C",
+      "possibleResolutions": "The payer can't respond to your request. This is typically a temporary issue with the payer's system, such as downtime, but it can also be an extended outage. We recommend retrying immediately and continuing to retry for up to 2 minutes. Learn more about our [recommended retry strategy](https://www.stedi.com/docs/healthcare/eligibility-troubleshooting#payer-connectivity-issues) for payer connectivity issues."
+    }
+  ],
+  "x12": "ISA*00*          *00*          *ZZ*STEDI          *01*117151744      *260715*1522*^*00501*493632333*0*T*`~GS*HB*STEDI*117151744*20260715*152254*1*X*005010X279A1~ST*271*0001*005010X279A1~BHT*0022*11*11112222333344445555666677*20260325*0901~HL*1**20*1~NM1*PR*2*UNITEDHEALTHCARE*****PI*87726~PER*IC**UR*WWW.UHCPROVIDER.COM~HL*2*1*21*1~NM1*1P*2*MEDICAL PROVIDER*****XX*1999999984~HL*3*2*22*0~NM1*IL*1*DOE*JANE****MI*UHCAAA42~REF*6P*666777~REF*6P*666777~AAA*N**42*R~DMG*D8*20010101~SE*14*0001~GE*1*1~IEA*1*493632333~",
+  "eligibilitySearchId": "019f665f-ae16-76b3-9ced-8a9e565189dc",
+  "id": "ec_019f665f-ae16-76b3-9ced-8a888a9fd7c2"
+}
