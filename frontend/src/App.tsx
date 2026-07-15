@@ -7,11 +7,19 @@ type Insurer = "aetna" | "cigna" | "unitedhealthcare" | "cms";
 
 type MentalHealthBenefit = {
   service_type_code: string;
-  status: "active" | "inactive" | "member_not_found" | "unknown";
+  status:
+    | "active"
+    | "inactive"
+    | "member_not_found"
+    | "payer_unavailable"
+    | "unknown";
   copay: string | null;
   coinsurance: string | null;
   deductible: string | null;
   in_network: boolean | null;
+  out_of_network_copay: string | null;
+  out_of_network_coinsurance: string | null;
+  out_of_network_deductible: string | null;
   payer_name: string | null;
   carve_out: boolean;
 };
@@ -48,11 +56,26 @@ const insurerOptions: Array<{ value: Insurer; label: string }> = [
   { value: "cms", label: "CMS" },
 ];
 
+const notCoveredMessage =
+  "This plan doesn't show active mental health coverage. You may still be able to see a therapist by paying out of pocket, or check with your insurer about your benefits.";
+const memberNotFoundMessage =
+  "We couldn't find a member with those details. Double-check the member ID, date of birth, and insurer, then try again.";
+const temporarilyUnavailableMessage =
+  "The insurance system is temporarily unavailable. Please try again in a few minutes.";
+const badRequestMessage = "Please check the details and try again.";
+
 function formatCurrency(value: string | null): string {
   if (value === null) {
     return "Not shown";
   }
   return `$${Number(value).toFixed(2)}`;
+}
+
+function formatCopayHeadline(value: string | null): string {
+  if (value === null) {
+    return "Copay not shown";
+  }
+  return `${formatCurrency(value)} copay per session`;
 }
 
 function formatPercent(value: string | null): string {
@@ -69,19 +92,25 @@ function formatNetwork(value: boolean | null): string {
   return value ? "In network" : "Out of network";
 }
 
-function plainAnswer(result: EligibilityResult): string {
-  if (!result.covered) {
-    return "Not covered";
-  }
+function shouldShowCoinsurance(value: string | null): boolean {
+  return value !== null && Number(value) > 0;
+}
 
-  const copay = result.copay
-    ? `${formatCurrency(result.copay)} per session`
-    : "cost details pending";
-  const network =
-    result.in_network === true
-      ? "in-network"
-      : formatNetwork(result.in_network).toLowerCase();
-  return `Covered - ${copay}, ${network}`;
+function errorMessageForCode(code: string): string {
+  if (code === "member_not_found") {
+    return memberNotFoundMessage;
+  }
+  if (code === "bad_request") {
+    return badRequestMessage;
+  }
+  if (
+    code === "payer_error" ||
+    code === "timeout" ||
+    code === "configuration_error"
+  ) {
+    return temporarilyUnavailableMessage;
+  }
+  return temporarilyUnavailableMessage;
 }
 
 function App() {
@@ -93,7 +122,7 @@ function App() {
     insurer: "unitedhealthcare",
   });
   const [result, setResult] = useState<EligibilityResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -120,16 +149,19 @@ function App() {
 
       if (!response.ok) {
         setError(
-          "message" in body
-            ? body.message
-            : "The eligibility check could not be completed.",
+          "code" in body
+            ? body
+            : { code: "payer_error", message: temporarilyUnavailableMessage },
         );
         return;
       }
 
       setResult(body as EligibilityResult);
     } catch {
-      setError("The eligibility check could not be completed.");
+      setError({
+        code: "payer_error",
+        message: temporarilyUnavailableMessage,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -253,26 +285,41 @@ function App() {
               <div className="error-state">
                 <p className="surface-label">Result</p>
                 <h2>Could not verify coverage</h2>
-                <p>{error}</p>
+                <p>{errorMessageForCode(error.code)}</p>
               </div>
             ) : null}
 
-            {result ? (
+            {result && !result.covered ? (
               <div className="coverage-result">
                 <p className="surface-label">Result</p>
-                <h2>{plainAnswer(result)}</h2>
+                <h2>Not covered</h2>
+                <p>{notCoveredMessage}</p>
+              </div>
+            ) : null}
+
+            {result && result.covered ? (
+              <div className="coverage-result">
+                <p className="surface-label">Result</p>
+                <h2>{formatCopayHeadline(result.copay)}</h2>
                 <dl>
                   <div>
                     <dt>Copay</dt>
                     <dd>{formatCurrency(result.copay)}</dd>
                   </div>
+                  {shouldShowCoinsurance(result.coinsurance) ? (
+                    <div>
+                      <dt>Coinsurance</dt>
+                      <dd>{formatPercent(result.coinsurance)}</dd>
+                    </div>
+                  ) : null}
                   <div>
-                    <dt>Coinsurance</dt>
-                    <dd>{formatPercent(result.coinsurance)}</dd>
-                  </div>
-                  <div>
-                    <dt>Deductible</dt>
-                    <dd>{formatCurrency(result.deductible)}</dd>
+                    <dt>Plan deductible</dt>
+                    <dd>
+                      {formatCurrency(result.deductible)}
+                      <span className="detail-note">
+                        Some costs may apply until your deductible is met.
+                      </span>
+                    </dd>
                   </div>
                   <div>
                     <dt>Network</dt>

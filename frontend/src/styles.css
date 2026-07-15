@@ -191,6 +191,14 @@ dd {
   overflow-wrap: anywhere;
 }
 
+.detail-note {
+  color: #5f6973;
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
 .notice {
   background: #eef5f1;
   border: 1px solid #c8d8d1;
