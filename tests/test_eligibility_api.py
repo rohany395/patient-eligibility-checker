@@ -18,7 +18,7 @@ def test_eligibility_endpoint_returns_normalized_result(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async def fake_run_eligibility_check(**_kwargs) -> dict[str, object]:
-        return load_fixture("active_mental_health.json")
+        return load_fixture("active_aetna.json")
 
     monkeypatch.setattr(
         "app.main.run_eligibility_check",
@@ -39,18 +39,21 @@ def test_eligibility_endpoint_returns_normalized_result(
     assert response.status_code == 200
     assert response.json() == {
         "covered": True,
-        "copay": "25",
-        "coinsurance": "0.2",
-        "deductible": "500",
+        "copay": "30",
+        "coinsurance": "0",
+        "deductible": None,
         "in_network": True,
         "mental_health": {
             "service_type_code": "MH",
             "status": "active",
-            "copay": "25",
-            "coinsurance": "0.2",
-            "deductible": "500",
+            "copay": "30",
+            "coinsurance": "0",
+            "deductible": None,
             "in_network": True,
-            "payer_name": "Sandbox Health Plan",
+            "out_of_network_copay": None,
+            "out_of_network_coinsurance": "0.5",
+            "out_of_network_deductible": None,
+            "payer_name": "AETNA INC",
             "carve_out": False,
         },
     }
@@ -95,7 +98,7 @@ def test_eligibility_endpoint_returns_clean_error_for_member_not_found(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async def fake_run_eligibility_check(**_kwargs) -> dict[str, object]:
-        return load_fixture("member_not_found.json")
+        return load_fixture("member_not_found_aaa75.json")
 
     monkeypatch.setattr(
         "app.main.run_eligibility_check",

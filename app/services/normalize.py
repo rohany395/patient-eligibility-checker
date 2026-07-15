@@ -5,12 +5,17 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from app.services.errors import member_not_found_error
+from app.services.errors import member_not_found_error, payer_error
 
 
-BenefitStatus = Literal["active", "inactive", "member_not_found", "unknown"]
-MENTAL_HEALTH_SERVICE_TYPE_CODES = {"A6", "MH"}
-MENTAL_HEALTH_SERVICE_TERMS = ("mental", "behavioral", "psychotherapy")
+BenefitStatus = Literal[
+    "active",
+    "inactive",
+    "member_not_found",
+    "payer_unavailable",
+    "unknown",
+]
+MENTAL_HEALTH_SERVICE_TYPE_CODE = "MH"
 
 
 class MentalHealthBenefit(BaseModel):
@@ -20,6 +25,9 @@ class MentalHealthBenefit(BaseModel):
     coinsurance: Decimal | None
     deductible: Decimal | None
     in_network: bool | None
+    out_of_network_copay: Decimal | None
+    out_of_network_coinsurance: Decimal | None
+    out_of_network_deductible: Decimal | None
     payer_name: str | None
     carve_out: bool
 
@@ -34,214 +42,160 @@ class EligibilitySummary(BaseModel):
 
 
 def normalize_eligibility_response(raw_response: dict[str, Any]) -> EligibilitySummary:
-    benefits_information = raw_response.get("benefitsInformation")
-    if isinstance(benefits_information, list):
-        return _normalize_json_benefits(raw_response, benefits_information)
+    aaa_codes = _top_level_aaa_codes(raw_response)
+    if "75" in aaa_codes:
+        return _empty_summary("member_not_found", raw_response)
+    if "42" in aaa_codes:
+        return _empty_summary("payer_unavailable", raw_response)
 
-    x12 = raw_response.get("x12")
-    if not isinstance(x12, str):
-        status: BenefitStatus = "unknown"
-        mental_health = MentalHealthBenefit(
-            service_type_code="MH",
-            status=status,
-            copay=None,
-            coinsurance=None,
-            deductible=None,
-            in_network=None,
-            payer_name=None,
-            carve_out=False,
-        )
-        return EligibilitySummary(
-            covered=False,
-            copay=None,
-            coinsurance=None,
-            deductible=None,
-            in_network=None,
-            mental_health=mental_health,
-        )
-
-    copay: Decimal | None = None
-    coinsurance: Decimal | None = None
-    deductible: Decimal | None = None
-    in_network: bool | None = None
-    status: BenefitStatus = "unknown"
-    payer_name: str | None = None
-    mental_health_payer_name: str | None = None
-    last_segment_was_mental_health_benefit = False
-
-    for raw_segment in x12.split("~"):
-        segment = raw_segment.strip()
-        if not segment:
-            continue
-
-        parts = segment.split("*")
-        tag = parts[0]
-
-        if tag == "AAA":
-            aaa_code = parts[3] if len(parts) > 3 else None
-            if aaa_code == "75":
-                status = "member_not_found"
-                break
-            continue
-
-        if tag == "NM1" and len(parts) > 3:
-            if parts[1] == "PR":
-                payer_name = parts[3] or None
-            elif parts[1] == "VN" and last_segment_was_mental_health_benefit:
-                mental_health_payer_name = parts[3] or None
-            continue
-
-        if tag != "EB":
-            continue
-
-        service_codes = parts[3].split(":") if len(parts) > 3 and parts[3] else []
-        benefit_description = parts[5].lower() if len(parts) > 5 else ""
-        is_mental_health_benefit = bool(
-            set(service_codes) & MENTAL_HEALTH_SERVICE_TYPE_CODES
-        ) or any(
-            term in benefit_description for term in MENTAL_HEALTH_SERVICE_TERMS
-        )
-        last_segment_was_mental_health_benefit = is_mental_health_benefit
-        if not is_mental_health_benefit:
-            continue
-
-        benefit_code = parts[1] if len(parts) > 1 else ""
-        monetary_amount = (
-            Decimal(parts[7])
-            if len(parts) > 7 and parts[7]
-            else None
-        )
-        percent = (
-            Decimal(parts[8])
-            if len(parts) > 8 and parts[8]
-            else None
-        )
-        network_code = parts[12] if len(parts) > 12 else None
-
-        if benefit_code == "1":
-            status = "active"
-        elif benefit_code in {"6", "I"}:
-            status = "inactive"
-        elif benefit_code == "B":
-            copay = monetary_amount
-        elif benefit_code == "A":
-            coinsurance = percent or monetary_amount
-        elif benefit_code == "C":
-            deductible = monetary_amount
-
-        if network_code == "Y":
-            in_network = True
-        elif network_code == "N":
-            in_network = False
-
-    if status != "active":
-        covered = False
+    benefits = _mental_health_benefits(raw_response)
+    covered = any(benefit.get("code") == "1" for benefit in benefits)
+    status: BenefitStatus
+    if covered:
+        status = "active"
+    elif _has_inactive_coverage(raw_response):
+        status = "inactive"
     else:
-        covered = True
+        status = "unknown"
 
-    payer_for_mental_health = mental_health_payer_name or payer_name
-    carve_out = (
-        bool(mental_health_payer_name)
-        and bool(payer_name)
-        and mental_health_payer_name != payer_name
+    copay = _benefit_decimal(benefits, code="B", field="benefitAmount", network="Y")
+    coinsurance = _benefit_decimal(
+        benefits,
+        code="A",
+        field="benefitPercent",
+        network="Y",
     )
+    deductible = _benefit_decimal(
+        benefits,
+        code="C",
+        field="benefitAmount",
+        network="Y",
+    )
+    out_of_network_copay = _benefit_decimal(
+        benefits,
+        code="B",
+        field="benefitAmount",
+        network="N",
+    )
+    out_of_network_coinsurance = _benefit_decimal(
+        benefits,
+        code="A",
+        field="benefitPercent",
+        network="N",
+    )
+    out_of_network_deductible = _benefit_decimal(
+        benefits,
+        code="C",
+        field="benefitAmount",
+        network="N",
+    )
+
     mental_health = MentalHealthBenefit(
-        service_type_code="MH",
+        service_type_code=MENTAL_HEALTH_SERVICE_TYPE_CODE,
         status=status,
         copay=copay,
         coinsurance=coinsurance,
         deductible=deductible,
-        in_network=in_network,
-        payer_name=payer_for_mental_health,
-        carve_out=carve_out,
+        in_network=True if covered else None,
+        out_of_network_copay=out_of_network_copay,
+        out_of_network_coinsurance=out_of_network_coinsurance,
+        out_of_network_deductible=out_of_network_deductible,
+        payer_name=_payer_name(raw_response),
+        carve_out=False,
     )
     return EligibilitySummary(
         covered=covered,
         copay=copay,
         coinsurance=coinsurance,
         deductible=deductible,
-        in_network=in_network,
+        in_network=mental_health.in_network,
         mental_health=mental_health,
     )
 
 
-def _normalize_json_benefits(
+def _empty_summary(
+    status: BenefitStatus,
     raw_response: dict[str, Any],
-    benefits_information: list[Any],
 ) -> EligibilitySummary:
-    copay: Decimal | None = None
-    coinsurance: Decimal | None = None
-    deductible: Decimal | None = None
-    in_network: bool | None = None
-    status: BenefitStatus = "unknown"
-    service_type_code = "A6"
-
-    for benefit in benefits_information:
-        if not isinstance(benefit, dict) or not _is_mental_health_json_benefit(benefit):
-            continue
-
-        service_codes = _string_list(benefit.get("serviceTypeCodes"))
-        for service_code in service_codes:
-            if service_code in MENTAL_HEALTH_SERVICE_TYPE_CODES:
-                service_type_code = service_code
-                break
-
-        benefit_code = benefit.get("code")
-        if benefit_code == "1":
-            status = "active"
-        elif benefit_code in {"6", "I"}:
-            status = "inactive"
-        elif benefit_code == "B":
-            copay = _decimal_or_none(benefit.get("benefitAmount"))
-        elif benefit_code == "A":
-            coinsurance = _decimal_or_none(
-                benefit.get("benefitPercent") or benefit.get("benefitAmount")
-            )
-        elif benefit_code == "C":
-            deductible = _decimal_or_none(benefit.get("benefitAmount"))
-
-        network_code = benefit.get("inPlanNetworkIndicatorCode")
-        if network_code == "Y":
-            in_network = True
-        elif network_code == "N":
-            in_network = False
-
     mental_health = MentalHealthBenefit(
-        service_type_code=service_type_code,
+        service_type_code=MENTAL_HEALTH_SERVICE_TYPE_CODE,
         status=status,
-        copay=copay,
-        coinsurance=coinsurance,
-        deductible=deductible,
-        in_network=in_network,
+        copay=None,
+        coinsurance=None,
+        deductible=None,
+        in_network=None,
+        out_of_network_copay=None,
+        out_of_network_coinsurance=None,
+        out_of_network_deductible=None,
         payer_name=_payer_name(raw_response),
         carve_out=False,
     )
     return EligibilitySummary(
-        covered=status == "active",
-        copay=copay,
-        coinsurance=coinsurance,
-        deductible=deductible,
-        in_network=in_network,
+        covered=False,
+        copay=None,
+        coinsurance=None,
+        deductible=None,
+        in_network=None,
         mental_health=mental_health,
     )
 
 
-def _is_mental_health_json_benefit(benefit: dict[str, Any]) -> bool:
-    service_codes = set(_string_list(benefit.get("serviceTypeCodes")))
-    if service_codes & MENTAL_HEALTH_SERVICE_TYPE_CODES:
-        return True
+def _top_level_aaa_codes(raw_response: dict[str, Any]) -> set[str]:
+    errors = raw_response.get("errors")
+    if not isinstance(errors, list):
+        return set()
 
-    searchable_values = [
-        benefit.get("name"),
-        benefit.get("planCoverage"),
-        *_string_list(benefit.get("serviceTypes")),
-    ]
+    codes: set[str] = set()
+    for error in errors:
+        if not isinstance(error, dict):
+            continue
+        if error.get("field") == "AAA" and isinstance(error.get("code"), str):
+            codes.add(error["code"])
+    return codes
+
+
+def _mental_health_benefits(raw_response: dict[str, Any]) -> list[dict[str, Any]]:
+    benefits = raw_response.get("benefitsInformation")
+    if not isinstance(benefits, list):
+        return []
+
+    mental_health_benefits: list[dict[str, Any]] = []
+    for benefit in benefits:
+        if not isinstance(benefit, dict):
+            continue
+        if MENTAL_HEALTH_SERVICE_TYPE_CODE in _string_list(
+            benefit.get("serviceTypeCodes")
+        ):
+            mental_health_benefits.append(benefit)
+    return mental_health_benefits
+
+
+def _has_inactive_coverage(raw_response: dict[str, Any]) -> bool:
+    benefits = raw_response.get("benefitsInformation")
+    if not isinstance(benefits, list):
+        return False
     return any(
-        term in value.lower()
-        for value in searchable_values
-        if isinstance(value, str)
-        for term in MENTAL_HEALTH_SERVICE_TERMS
+        isinstance(benefit, dict) and benefit.get("code") == "6"
+        for benefit in benefits
     )
+
+
+def _benefit_decimal(
+    benefits: list[dict[str, Any]],
+    *,
+    code: str,
+    field: str,
+    network: Literal["Y", "N"],
+) -> Decimal | None:
+    for benefit in benefits:
+        if benefit.get("code") != code:
+            continue
+        if benefit.get("inPlanNetworkIndicatorCode") != network:
+            continue
+        value = _decimal_or_none(benefit.get(field))
+        if value is not None:
+            return value
+    return None
 
 
 def _string_list(value: Any) -> list[str]:
@@ -270,3 +224,5 @@ def _payer_name(raw_response: dict[str, Any]) -> str | None:
 def raise_for_eligibility_error(summary: EligibilitySummary) -> None:
     if summary.mental_health.status == "member_not_found":
         raise member_not_found_error()
+    if summary.mental_health.status == "payer_unavailable":
+        raise payer_error()

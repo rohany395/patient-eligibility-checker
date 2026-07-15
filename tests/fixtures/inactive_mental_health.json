@@ -1,8 +1,0 @@
-{
-  "id": "fixture-inactive-mental-health",
-  "tradingPartnerServiceId": "SANDBOX",
-  "payer": {
-    "name": "Sandbox Health Plan"
-  },
-  "x12": "ISA*00*          *00*          *ZZ*REDACTED       *ZZ*REDACTED       *260714*1200*^*00501*000000001*0*T*:~GS*HB*REDACTED*REDACTED*20260714*1200*1*X*005010X279A1~ST*271*0001*005010X279A1~BHT*0022*11*0001*20260714*1200~HL*1**20*1~NM1*PR*2*Sandbox Health Plan*****PI*SANDBOX~EB*6**MH**Mental Health~SE*7*0001~GE*1*1~IEA*1*000000001~"
-}
