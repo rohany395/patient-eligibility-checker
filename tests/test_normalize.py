@@ -29,13 +29,13 @@ def test_normalize_active_aetna_mental_health_benefits() -> None:
     assert result.covered is True
     assert result.copay == Decimal("30")
     assert result.coinsurance == Decimal("0")
-    assert result.deductible is None
+    assert result.deductible == Decimal("500")
     assert result.in_network is True
     assert result.mental_health.service_type_code == "MH"
     assert result.mental_health.status == "active"
     assert result.mental_health.copay == Decimal("30")
     assert result.mental_health.coinsurance == Decimal("0")
-    assert result.mental_health.deductible is None
+    assert result.mental_health.deductible == Decimal("500")
     assert result.mental_health.out_of_network_copay is None
     assert result.mental_health.out_of_network_coinsurance == Decimal("0.5")
     assert result.mental_health.out_of_network_deductible is None
@@ -49,10 +49,11 @@ def test_normalize_active_uhc_mental_health_coverage_without_costs() -> None:
     assert result.covered is True
     assert result.copay is None
     assert result.coinsurance is None
-    assert result.deductible is None
+    assert result.deductible == Decimal("0")
     assert result.in_network is True
     assert result.mental_health.service_type_code == "MH"
     assert result.mental_health.status == "active"
+    assert result.mental_health.deductible == Decimal("0")
     assert result.mental_health.payer_name == "UNITEDHEALTHCARE"
 
 

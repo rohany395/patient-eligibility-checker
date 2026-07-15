@@ -70,6 +70,11 @@ def normalize_eligibility_response(raw_response: dict[str, Any]) -> EligibilityS
         code="C",
         field="benefitAmount",
         network="Y",
+    ) or _benefit_decimal(
+        _service_type_benefits(raw_response, "30"),
+        code="C",
+        field="benefitAmount",
+        network="Y",
     )
     out_of_network_copay = _benefit_decimal(
         benefits,
@@ -155,19 +160,24 @@ def _top_level_aaa_codes(raw_response: dict[str, Any]) -> set[str]:
 
 
 def _mental_health_benefits(raw_response: dict[str, Any]) -> list[dict[str, Any]]:
+    return _service_type_benefits(raw_response, MENTAL_HEALTH_SERVICE_TYPE_CODE)
+
+
+def _service_type_benefits(
+    raw_response: dict[str, Any],
+    service_type_code: str,
+) -> list[dict[str, Any]]:
     benefits = raw_response.get("benefitsInformation")
     if not isinstance(benefits, list):
         return []
 
-    mental_health_benefits: list[dict[str, Any]] = []
+    matching_benefits: list[dict[str, Any]] = []
     for benefit in benefits:
         if not isinstance(benefit, dict):
             continue
-        if MENTAL_HEALTH_SERVICE_TYPE_CODE in _string_list(
-            benefit.get("serviceTypeCodes")
-        ):
-            mental_health_benefits.append(benefit)
-    return mental_health_benefits
+        if service_type_code in _string_list(benefit.get("serviceTypeCodes")):
+            matching_benefits.append(benefit)
+    return matching_benefits
 
 
 def _has_inactive_coverage(raw_response: dict[str, Any]) -> bool:
@@ -187,15 +197,47 @@ def _benefit_decimal(
     field: str,
     network: Literal["Y", "N"],
 ) -> Decimal | None:
-    for benefit in benefits:
-        if benefit.get("code") != code:
-            continue
-        if benefit.get("inPlanNetworkIndicatorCode") != network:
-            continue
+    matching_benefits = [
+        benefit
+        for benefit in benefits
+        if benefit.get("code") == code
+        and benefit.get("inPlanNetworkIndicatorCode") == network
+    ]
+    if code == "A" and network == "Y":
+        matching_benefits = sorted(
+            matching_benefits,
+            key=lambda benefit: 0
+            if _has_outpatient_without_inpatient_description(benefit)
+            else 1,
+        )
+
+    for benefit in matching_benefits:
         value = _decimal_or_none(benefit.get(field))
         if value is not None:
             return value
     return None
+
+
+def _has_outpatient_without_inpatient_description(benefit: dict[str, Any]) -> bool:
+    descriptions = _additional_information_descriptions(benefit)
+    return any("outpatient" in description for description in descriptions) and not any(
+        "inpatient" in description for description in descriptions
+    )
+
+
+def _additional_information_descriptions(benefit: dict[str, Any]) -> list[str]:
+    additional_information = benefit.get("additionalInformation")
+    if not isinstance(additional_information, list):
+        return []
+
+    descriptions: list[str] = []
+    for item in additional_information:
+        if not isinstance(item, dict):
+            continue
+        description = item.get("description")
+        if isinstance(description, str):
+            descriptions.append(description.lower())
+    return descriptions
 
 
 def _string_list(value: Any) -> list[str]:
