@@ -9,11 +9,12 @@ details, the app checks their coverage in real time through the Stedi eligibilit
 sandbox, and shows a plain answer — covered or not, copay, in-network. Sandbox mock
 patients only; no real patient data, ever.
 
-IMPORTANT sandbox reality: Stedi's sandbox only mocks GENERAL MEDICAL coverage
-(service type `30`). It has NO mental-health-specific mock and NO behavioral-health
-carve-out mock. The product is *framed* for behavioral-health intake, but sandbox
-checks must request service type `30`. Keep the requested service type a parameter
-so a production deployment could request behavioral-health service types instead.
+IMPORTANT sandbox reality: Stedi's sandbox mock checks request GENERAL MEDICAL coverage
+(service type `30`), and the response can include mental-health benefit lines tagged
+with service type `MH` (confirmed in `tests/fixtures/active_aetna.json`). The app
+requests service type `30` in the sandbox, then extracts the `MH`-tagged benefits from
+the result. Keep the requested service type a parameter so a production deployment
+could request behavioral-health service types directly if supported.
 
 ## Commands
 - Install:       `pip install -r requirements.txt` then `cd frontend && npm install`
@@ -43,8 +44,9 @@ so a production deployment could request behavioral-health service types instead
 
 ## Hard constraints
 - NEVER log, print, or store member IDs, names, or dates of birth.
-- In the sandbox, request service type `30` — it's the only type the sandbox mocks.
-  Keep the requested service type a parameter; document the production intent in the README.
+- In the sandbox, request service type `30` and extract `MH`-tagged benefit lines from
+  the response. Keep the requested service type a parameter; document the production
+  intent in the README.
 - Test fixtures MUST be real captured responses (see Testing). Fabricating a fixture to
   make a test pass is a defect, not a fix.
 - Do not add a new production dependency without flagging it in your summary first.
