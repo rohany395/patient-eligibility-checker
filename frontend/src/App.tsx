@@ -125,6 +125,16 @@ function App() {
   const [error, setError] = useState<ApiError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  function fillSamplePatient() {
+    setForm({
+      firstName: "Jane",
+      lastName: "Doe",
+      memberId: "AETNA12345",
+      dateOfBirth: "2004-04-04",
+      insurer: "aetna",
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
@@ -182,6 +192,20 @@ function App() {
 
         <div className="layout-grid">
           <form className="lookup-form" onSubmit={handleSubmit}>
+            <div className="form-note">
+              <p>
+                Sandbox demo only. Use Stedi mock patient details, not real
+                insurance information.
+              </p>
+              <button
+                className="secondary-button"
+                onClick={fillSamplePatient}
+                type="button"
+              >
+                Use sample patient
+              </button>
+            </div>
+
             <div className="name-grid">
               <label>
                 <span>First name</span>
